@@ -1,0 +1,45 @@
+body {
+    margin: 0;
+    background-color: dimgray;
+    font-family: 'Helvetica Neue', sans-serif;
+}
+
+#screen {
+    position: relative;
+}
+
+#bottom {
+    position: absolute;
+    bottom: 0;
+    padding: 15px;
+    background-color: lightgray;
+    width: 100%;
+}
+
+input[type='text'], input[type='number'] {
+    margin-left: 10px;
+    padding: 7px;
+    border: 2px solid darkslategray;
+    border-radius: 3px;
+}
+
+button {
+    background-color: dodgerblue;
+    color: white;
+    padding: 7px;
+    font-size: 20px;
+    border: 0;
+    border-radius: 3px;
+}
+
+button:hover {
+    background-color: deepskyblue;
+}
+
+button:active {
+    background-color: blue;
+}
+
+.space-right {
+    margin-right: 30px;
+}
