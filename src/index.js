@@ -1,64 +1,72 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import RFB from '@novnc/novnc/core/rfb';
+import WebSocketAsPromised from 'websocket-as-promised';
+import TextInput from './textinput';
 import './index.css';
 
 const port = 5962;
 let socket;
 
-function connectWs(address, port) {
-    return new Promise((resolve, reject) => {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const url = `${protocol}//${address}:${port}/ws/`;
-        socket = new WebSocket(url);
-
-        socket.onopen = () => {
-            socket.send(JSON.stringify({request: 'ping'}));
-        }
-
-        socket.onmessage = data => {
-            let json = JSON.parse(data.data);
-            console.log(json);
-            resolve();
-        }
-
-        socket.onerror = e => {
-            console.log(e);
-            reject();
-        }
+async function connectWs(address, port) {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const url = `${protocol}//${address}:${port}/ws/`;
+    socket = new WebSocketAsPromised(url, {
+        packMessage: data => JSON.stringify(data),
+        unpackMessage: data => JSON.parse(data),
+        attachRequestId: (data, id) => Object.assign({id: id}, data),
+        extractRequestId: data => data && data.id
     });
+    await socket.open();
 }
 
-class TextInput extends React.Component {
+class VNCScreen extends React.Component {
     constructor(props) {
         super(props);
-        this.state = {
-            value: ''
-        };
-    }
-
-    handleChange(e) {
-        this.props.handler(e.target.value);
-        this.setState({value: e.target.value});
     }
 
     render() {
-        let number = this.props.number;
-        let input = {};
-        if (number) {
-            let arr = number.split(',');
-            input = {min: arr[0], max: arr[1]};
-        }
         return (
-            <input
-                type={this.props.number ? 'number' : 'text'}
-                className='space-right' value={this.state.value}
-                onChange={e => this.handleChange(e)}
-                {...input}
-            />
+            <div id='screen'></div>
         );
     }
 }
+
+const BaseScreen = props => {
+    return (
+        <div className='screen-outer'>
+            <div className='screen-middle'>
+                <div className={`screen-inner ${props.error ? 'screen-error' : 'screen-info'}`}>
+                    {props.children}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+const ErrorScreen = props => {
+    return <BaseScreen error={true}>An error occurred: {props.error}</BaseScreen>;
+};
+
+const MachineSelectScreen = props => {
+    return (
+        <BaseScreen error={false}>
+            <h2>Select Machine</h2>
+            <ul>
+                {props.machines.map(name => <li key={name}><a onClick={() => props.selectCallback(name)}>{name}</a></li>)}
+            </ul>
+        </BaseScreen>
+    );
+}
+
+const Screen = props => {
+    if (props.error)
+        return <ErrorScreen error={props.error} />
+    else if (props.machines)
+        return <MachineSelectScreen machines={props.machines} selectCallback={props.selectCallback} />
+    else
+        return <VNCScreen />
+};
 
 class Client extends React.Component {
     constructor(props) {
@@ -66,8 +74,11 @@ class Client extends React.Component {
         this.state = {
             handle: null,
             address: null,
-            port: null
+            port: null,
+            error: null,
+            machines: null
         }
+        this.displayMachines = this.displayMachines.bind(this);
     }
 
     handleAddress(value) {
@@ -80,20 +91,40 @@ class Client extends React.Component {
         this.setState(state);
     }
 
+    displayMachines(response) {
+        if (response.success) {
+            const state = {...this.state, machines: response.machines};
+            this.setState(state);
+        } else {
+            const state = {...this.state, error: response.error};
+            this.setState(state);
+        }
+    }
+
+    selectMachine(name) {
+        console.log(`Selected machine ${name}`);
+        const state = {...this.state, machines: null};
+        this.setState(state);
+    }
+
     connect() {
         if (!this.state.address)
             return;
         connectWs(this.state.address, this.state.port ? this.state.port : port).then(() => {
-            socket.send(JSON.stringify({request: 'machines'}));
-        });
+            return socket.sendRequest({request: 'machines'});
+        }).then(this.displayMachines);
     }
 
     render() {
         return (
             <div>
-                <div id='screen'></div>
+                <Screen
+                    error={this.state.error}
+                    machines={this.state.machines}
+                    selectCallback={name => this.selectMachine(name)}
+                />
                 <div id='bottom'>
-                    <h3>Manage Connection</h3>
+                    <h2>Manage Connection</h2>
                     Address: <TextInput handler={value => this.handleAddress(value)} />
                     Port: <TextInput number='0,65535' handler={value => this.handlePort(value)} />
                     <button onClick={() => this.connect()}>Connect</button>

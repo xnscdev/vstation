@@ -4,8 +4,34 @@ body {
     font-family: 'Helvetica Neue', sans-serif;
 }
 
-#screen {
-    position: relative;
+.screen-outer {
+    display: table;
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+}
+
+.screen-middle {
+    display: table-cell;
+    vertical-align: middle;
+}
+
+.screen-inner {
+    margin-left: auto;
+    margin-right: auto;
+    padding: 20px;
+    width: 60%;
+}
+
+.screen-error {
+    background-color: darkred;
+    color: white;
+}
+
+.screen-info {
+    background-color: lightgray;
 }
 
 #bottom {
