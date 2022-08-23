@@ -4,6 +4,18 @@ body {
     font-family: 'Helvetica Neue', sans-serif;
 }
 
+.button-link {
+    border: 0;
+    background: none;
+    cursor: pointer;
+    color: black;
+}
+
+.button-link:hover {
+    background: none;
+    color: darkslategray;
+}
+
 .screen-outer {
     display: table;
     position: absolute;
@@ -32,6 +44,11 @@ body {
 
 .screen-info {
     background-color: lightgray;
+}
+
+#screen {
+    flex: 1;
+    overflow: hidden;
 }
 
 #bottom {

@@ -1,9 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import RFB from '@novnc/novnc/core/rfb';
 import WebSocketAsPromised from 'websocket-as-promised';
 import TextInput from './textinput';
+import Screen from './screen';
 import './index.css';
+import RFB from "@novnc/novnc/core/rfb";
 
 const port = 5962;
 let socket;
@@ -20,54 +21,6 @@ async function connectWs(address, port) {
     await socket.open();
 }
 
-class VNCScreen extends React.Component {
-    constructor(props) {
-        super(props);
-    }
-
-    render() {
-        return (
-            <div id='screen'></div>
-        );
-    }
-}
-
-const BaseScreen = props => {
-    return (
-        <div className='screen-outer'>
-            <div className='screen-middle'>
-                <div className={`screen-inner ${props.error ? 'screen-error' : 'screen-info'}`}>
-                    {props.children}
-                </div>
-            </div>
-        </div>
-    );
-}
-
-const ErrorScreen = props => {
-    return <BaseScreen error={true}>An error occurred: {props.error}</BaseScreen>;
-};
-
-const MachineSelectScreen = props => {
-    return (
-        <BaseScreen error={false}>
-            <h2>Select Machine</h2>
-            <ul>
-                {props.machines.map(name => <li key={name}><a onClick={() => props.selectCallback(name)}>{name}</a></li>)}
-            </ul>
-        </BaseScreen>
-    );
-}
-
-const Screen = props => {
-    if (props.error)
-        return <ErrorScreen error={props.error} />
-    else if (props.machines)
-        return <MachineSelectScreen machines={props.machines} selectCallback={props.selectCallback} />
-    else
-        return <VNCScreen />
-};
-
 class Client extends React.Component {
     constructor(props) {
         super(props);
@@ -75,10 +28,13 @@ class Client extends React.Component {
             handle: null,
             address: null,
             port: null,
+            vncAddress: null,
+            vncPort: null,
             error: null,
-            machines: null
+            machineSelect: null
         }
         this.displayMachines = this.displayMachines.bind(this);
+        this.openVNC = this.openVNC.bind(this);
     }
 
     handleAddress(value) {
@@ -92,27 +48,96 @@ class Client extends React.Component {
     }
 
     displayMachines(response) {
+        return new Promise((resolve, reject) => {
+            if (response.success) {
+                const state = {
+                    ...this.state,
+                    machineSelect: {
+                        machines: response.machines,
+                        selected: null,
+                        resolve: resolve
+                    }
+                };
+                this.setState(state);
+            } else {
+                const state = {
+                    ...this.state,
+                    error: response.error,
+                    machineSelect: null
+                }
+                this.setState(state);
+                reject();
+            }
+        });
+    }
+
+    selectMachine(name) {
+        const machines = this.state.machineSelect.machines;
+        const resolve = this.state.machineSelect.resolve;
+        const state = {
+            ...this.state,
+            machineSelect: {
+                machines: machines,
+                selected: name,
+                resolve: null
+            }
+        };
+        this.setState(state);
+        resolve();
+    }
+
+    openVNC(response) {
+        const address = this.state.address;
         if (response.success) {
-            const state = {...this.state, machines: response.machines};
+            const state = {
+                ...this.state,
+                vncAddress: address,
+                vncPort: response.port,
+                handle: this.createVNCHandle(address, response.port)
+            };
             this.setState(state);
         } else {
-            const state = {...this.state, error: response.error};
+            const state = {
+                ...this.state,
+                error: response.error,
+                vncAddress: address,
+                vncPort: null,
+                handle: null
+            }
             this.setState(state);
         }
     }
 
-    selectMachine(name) {
-        console.log(`Selected machine ${name}`);
-        const state = {...this.state, machines: null};
-        this.setState(state);
+    createVNCHandle(address, port) {
+        if (this.state.handle) {
+            this.state.handle.disconnect();
+        }
+        const url = `ws://${address}:6080`; // TODO Setup WebSocket proxy to port
+        console.log(`VNC URL: ${url}`);
+        const handle = new RFB(document.getElementById('screen'), url);
+        handle.addEventListener('connect', () => console.log(`Connected to ${url}`));
+        handle.addEventListener('disconnect', e => {
+            if (e.detail.clean)
+                console.log(`Disconnected from ${url}`);
+            else
+                console.log('Connection closed unexpectedly');
+        });
+        handle.addEventListener('credentialsrequired', () => {
+            const password = prompt('Enter password to connect:');
+            handle.sendCredentials({password: password});
+        });
+        handle.addEventListener('desktopname', e => console.log(e.detail.name));
+        return handle;
     }
 
     connect() {
         if (!this.state.address)
             return;
-        connectWs(this.state.address, this.state.port ? this.state.port : port).then(() => {
-            return socket.sendRequest({request: 'machines'});
-        }).then(this.displayMachines);
+        connectWs(this.state.address, this.state.port ? this.state.port : port)
+            .then(() => socket.sendRequest({request: 'machines'}))
+            .then(this.displayMachines)
+            .then(() => socket.sendRequest({request: 'vncport', name: this.state.machineSelect.selected}))
+            .then(this.openVNC);
     }
 
     render() {
@@ -120,7 +145,7 @@ class Client extends React.Component {
             <div>
                 <Screen
                     error={this.state.error}
-                    machines={this.state.machines}
+                    machines={this.state.machineSelect}
                     selectCallback={name => this.selectMachine(name)}
                 />
                 <div id='bottom'>

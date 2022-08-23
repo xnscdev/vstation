@@ -52,7 +52,7 @@ class VStation(dbus.service.Object):
 
 if __name__ == '__main__':
     try:
-        conn = libvirt.open('qemu:///system')
+        conn = libvirt.openReadOnly('qemu:///system')
     except libvirt.libvirtError as e:
         print(repr(e), file=sys.stderr)
         exit(1)

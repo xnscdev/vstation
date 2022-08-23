@@ -23,6 +23,9 @@ app.ws('/ws', async ws => {
             case 'machines':
                 getMachines(ws, json.id);
                 break;
+            case 'vncport':
+                getVNCPort(ws, json.id, json.name);
+                break;
             default:
                 sendFailure(ws, json.id, `Unknown request ${msg.request}`);
         }
@@ -47,18 +50,25 @@ function sendSuccess(ws, id, obj) {
 }
 
 function getMachines(ws, id) {
+    invokeDBus(ws, id, 'GetMachines', result => { return {machines: result}; });
+}
+
+function getVNCPort(ws, id, name) {
+    invokeDBus(ws, id, 'GetVNCPort', result => { return {port: result}; }, name);
+}
+
+function invokeDBus(ws, id, name, callback, ...args) {
     bus.getInterface('com.github.xnscdev.VStation', '/VStation', 'com.github.xnscdev.VStation', (err, iface) => {
         if (err) {
             sendFailure(ws, id, err.toString());
         } else {
             try {
-                iface.GetMachines({timeout: 3000}, (err, result) => {
-                    if (err) {
+                iface[name](...args, {timeout: 3000}, (err, result) => {
+                    if (err)
                         sendFailure(ws, id, err.toString());
-                    } else {
-                        sendSuccess(ws, id, {machines: result});
-                    }
-                });
+                    else
+                        sendSuccess(ws, id, callback(result));
+                })
             } catch (e) {
                 sendFailure(ws, id, e.stack);
             }
