@@ -1,11 +1,11 @@
 import express from 'express';
 import expressWs from 'express-ws';
 import http from 'http';
-import DBus from 'dbus';
+import {sessionBus} from 'dbus-next';
 
 const port = 5962;
 
-const bus = DBus.getBus('session');
+const bus = sessionBus();
 
 let app = express();
 let server = http.createServer(app).listen(port);
@@ -21,10 +21,10 @@ app.ws('/ws', async ws => {
         console.log(json);
         switch (json.request) {
             case 'machines':
-                getMachines(ws, json.id);
+                await getMachines(ws, json.id);
                 break;
-            case 'vncport':
-                getVNCPort(ws, json.id, json.name);
+            case 'start':
+                await startMachine(ws, json.id, json.name);
                 break;
             default:
                 sendFailure(ws, json.id, `Unknown request ${msg.request}`);
@@ -49,29 +49,18 @@ function sendSuccess(ws, id, obj) {
     ws.send(JSON.stringify(obj));
 }
 
-function getMachines(ws, id) {
-    invokeDBus(ws, id, 'GetMachines', result => { return {machines: result}; });
+function formattedError(err) {
+    return `${err.type}: ${err.text}`;
 }
 
-function getVNCPort(ws, id, name) {
-    invokeDBus(ws, id, 'GetVNCPort', result => { return {port: result}; }, name);
+async function getMachines(ws, id) {
+    const obj = await bus.getProxyObject('com.github.xnscdev.VStation', '/VStation');
+    const iface = obj.getInterface('com.github.xnscdev.VStation');
+    iface.GetMachines().then(result => sendSuccess(ws, id, {machines: result})).catch(err => sendFailure(ws, id, formattedError(err)));
 }
 
-function invokeDBus(ws, id, name, callback, ...args) {
-    bus.getInterface('com.github.xnscdev.VStation', '/VStation', 'com.github.xnscdev.VStation', (err, iface) => {
-        if (err) {
-            sendFailure(ws, id, err.toString());
-        } else {
-            try {
-                iface[name](...args, {timeout: 3000}, (err, result) => {
-                    if (err)
-                        sendFailure(ws, id, err.toString());
-                    else
-                        sendSuccess(ws, id, callback(result));
-                })
-            } catch (e) {
-                sendFailure(ws, id, e.stack);
-            }
-        }
-    });
+async function startMachine(ws, id, name) {
+    const obj = await bus.getProxyObject('com.github.xnscdev.VStation', '/VStation');
+    const iface = obj.getInterface('com.github.xnscdev.VStation');
+    iface.StartMachine(name).then(() => sendSuccess(ws, id, {})).catch(err => sendFailure(ws, id, formattedError(err)));
 }

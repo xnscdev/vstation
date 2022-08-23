@@ -11,48 +11,49 @@ class LibvirtException(dbus.DBusException):
 
 class VStation(dbus.service.Object):
     @dbus.service.method(dbus_interface='com.github.xnscdev.VStation',
-                         in_signature='', out_signature='as')
+                         in_signature='', out_signature='a(sq)')
     def GetMachines(self):
         try:
+            names = conn.listDefinedDomains()
+            if names is None:
+                raise LibvirtException('Failed to obtain domain name list')
             ids = conn.listDomainsID()
             if ids is None:
                 raise LibvirtException('Failed to obtain domain ID list')
-            machines = []
             for id in ids:
                 dom = conn.lookupByID(id)
-                if dom is None:
-                    raise LibvirtException('Failed to find domain for ID ' + id)
+                names.append(dom.name())
+
+            machines = []
+            for name in names:
+                dom = conn.lookupByName(name)
                 raw_xml = dom.XMLDesc(0)
                 xml = minidom.parseString(raw_xml)
                 for g in xml.getElementsByTagName('graphics'):
                     if (g.getAttribute('type') == 'vnc' and
                         g.getAttribute('autoport') == 'no'):
-                        machines.append(dom.name())
+                        machines.append((name, int(g.getAttribute('port'))))
                         break
             return machines
         except libvirt.libvirtError as e:
             raise LibvirtException(repr(e))
 
     @dbus.service.method(dbus_interface='com.github.xnscdev.VStation',
-                         in_signature='s', out_signature='q')
-    def GetVNCPort(self, name):
+                         in_signature='s', out_signature='')
+    def StartMachine(self, name):
         try:
             dom = conn.lookupByName(name)
-            if dom is None:
-                raise LibvirtException('Failed to find domain ' + name)
-            raw_xml = dom.XMLDesc(0)
-            xml = minidom.parseString(raw_xml)
-            for g in xml.getElementsByTagName('graphics'):
-                if (g.getAttribute('type') == 'vnc' and
-                    g.getAttribute('autoport') == 'no'):
-                    return int(g.getAttribute('port'))
+            if dom.state()[0] == libvirt.VIR_DOMAIN_SHUTOFF:
+                if dom.create() == -1:
+                    raise LibvirtException('Failed to start machine')
+            elif dom.state()[0] != libvirt.VIR_DOMAIN_RUNNING:
+                raise LibvirtException('Machine is in unknown state')
         except libvirt.libvirtError as e:
             raise LibvirtException(repr(e))
-        raise LibvirtException('Could not find VNC port for domain ' + name)
 
 if __name__ == '__main__':
     try:
-        conn = libvirt.openReadOnly('qemu:///system')
+        conn = libvirt.open('qemu:///system')
     except libvirt.libvirtError as e:
         print(repr(e), file=sys.stderr)
         exit(1)

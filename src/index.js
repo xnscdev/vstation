@@ -50,10 +50,16 @@ class Client extends React.Component {
     displayMachines(response) {
         return new Promise((resolve, reject) => {
             if (response.success) {
+                const machines = response.machines.map(machine => {
+                    return {
+                        name: machine[0],
+                        port: machine[1]
+                    };
+                });
                 const state = {
                     ...this.state,
                     machineSelect: {
-                        machines: response.machines,
+                        machines: machines,
                         selected: null,
                         resolve: resolve
                     }
@@ -71,14 +77,14 @@ class Client extends React.Component {
         });
     }
 
-    selectMachine(name) {
+    selectMachine(machine) {
         const machines = this.state.machineSelect.machines;
         const resolve = this.state.machineSelect.resolve;
         const state = {
             ...this.state,
             machineSelect: {
                 machines: machines,
-                selected: name,
+                selected: machine,
                 resolve: null
             }
         };
@@ -87,25 +93,29 @@ class Client extends React.Component {
     }
 
     openVNC(response) {
-        const address = this.state.address;
-        if (response.success) {
-            const state = {
-                ...this.state,
-                vncAddress: address,
-                vncPort: response.port,
-                handle: this.createVNCHandle(address, response.port)
-            };
-            this.setState(state);
-        } else {
-            const state = {
-                ...this.state,
-                error: response.error,
-                vncAddress: address,
-                vncPort: null,
-                handle: null
+        console.log(response);
+        return new Promise((resolve, reject) => {
+            if (response.success) {
+                const address = this.state.address;
+                const port = this.state.machineSelect.selected.port;
+                const state = {
+                    ...this.state,
+                    vncAddress: address,
+                    vncPort: port,
+                    handle: this.createVNCHandle(address, port)
+                };
+                this.setState(state);
+                resolve();
+            } else {
+                const state = {
+                    ...this.state,
+                    error: response.error,
+                    machineSelect: null
+                }
+                this.setState(state);
+                reject();
             }
-            this.setState(state);
-        }
+        });
     }
 
     createVNCHandle(address, port) {
@@ -136,7 +146,7 @@ class Client extends React.Component {
         connectWs(this.state.address, this.state.port ? this.state.port : port)
             .then(() => socket.sendRequest({request: 'machines'}))
             .then(this.displayMachines)
-            .then(() => socket.sendRequest({request: 'vncport', name: this.state.machineSelect.selected}))
+            .then(() => socket.sendRequest({request: 'start', name: this.state.machineSelect.selected.name}))
             .then(this.openVNC);
     }
 
