@@ -26,6 +26,9 @@ app.ws('/ws', async ws => {
             case 'start':
                 await startMachine(ws, json.id, json.name);
                 break;
+            case 'setup-ws':
+                await setupWebsockify(ws, json.id, json.name);
+                break;
             default:
                 sendFailure(ws, json.id, `Unknown request ${msg.request}`);
         }
@@ -63,4 +66,10 @@ async function startMachine(ws, id, name) {
     const obj = await bus.getProxyObject('com.github.xnscdev.VStation', '/VStation');
     const iface = obj.getInterface('com.github.xnscdev.VStation');
     iface.StartMachine(name).then(() => sendSuccess(ws, id, {})).catch(err => sendFailure(ws, id, formattedError(err)));
+}
+
+async function setupWebsockify(ws, id, name) {
+    const obj = await bus.getProxyObject('com.github.xnscdev.VStation', '/VStation');
+    const iface = obj.getInterface('com.github.xnscdev.VStation');
+    iface.SetupConnection(name).then(result => sendSuccess(ws, id, {port: result})).catch(err => sendFailure(ws, id, formattedError(err)));
 }

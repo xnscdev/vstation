@@ -21,7 +21,7 @@ const MachineSelectScreen = props => {
         <BaseScreen error={false}>
             <h2>Select Machine</h2>
             <ul>
-                {props.machines.machines.map(machine => <li key={machine.name}><button className='button-link' onClick={() => props.selectCallback(machine)}>{machine.name}</button></li>)}
+                {props.machines.machines.map(name => <li key={name}><button className='button-link' onClick={() => props.selectCallback(name)}>{name}</button></li>)}
             </ul>
         </BaseScreen>
     );
