@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+
+import asyncio
+import json
+import libvirt
+import subprocess
+import sys
+import time
+import websockets
+from xml.dom import minidom
+
+PORT = 5962
+next_port = 11624
+
+class VSException(Exception):
+    pass
+
+def get_port():
+    global next_port
+    port = next_port
+    next_port += 1
+    return port
+
+def get_machines():
+    m = []
+    for name in machines:
+        m.append(name)
+    return {'machines': m}
+
+def start_machine(name):
+    try:
+        dom = conn.lookupByName(name)
+        if dom.state()[0] == libvirt.VIR_DOMAIN_SHUTOFF:
+            if dom.create() == -1:
+                raise VSException('Failed to start machine')
+            elif dom.state()[0] != libvirt.VIR_DOMAIN_RUNNING:
+                raise VSException('Machine is in unknown state')
+    except libvirt.libvirtError as e:
+        raise VSException(repr(e))
+    return {}
+
+def setup_conn(name):
+    try:
+        desc = machines[name]
+        if not desc['ws']:
+            ws = get_port()
+            args = [
+                sys.executable,
+                '-m',
+                'websockify',
+                str(ws),
+                'localhost:' + str(desc['vnc'])
+            ]
+            try:
+                p = subprocess.Popen(args, stderr=subprocess.PIPE)
+            except OSError:
+                raise VSException('Failed to run websockify')
+
+            timeout = 5
+            timeout_start = time.time()
+            while time.time() < timeout_start + timeout:
+                line = p.stderr.readline()
+                if line and 'proxying' in str(line):
+                    break
+            if time.time() >= timeout_start + timeout:
+                raise VSException('Timeout in connecting to socket')
+
+            desc['process'] = p
+            desc['ws'] = ws
+        return {'port': desc['ws']}
+    except KeyError:
+        raise VSException('No machine found with name ' + name)
+
+async def send_failure(ws, id, msg):
+    await ws.send(json.dumps({
+        'id': id,
+        'success': False,
+        'error': msg
+    }))
+
+async def send_success(ws, id, obj):
+    obj['id'] = id
+    obj['success'] = True
+    await ws.send(json.dumps(obj))
+
+async def do_action(ws, id, f):
+    try:
+        obj = f()
+        await send_success(ws, id, obj)
+    except VSException as e:
+        await send_failure(ws, id, repr(e))
+
+async def handle(ws, path):
+    while True:
+        raw = await ws.recv()
+        print(raw)
+        msg = json.loads(raw)
+        if msg['request'] == 'machines':
+            await do_action(ws, msg['id'], get_machines)
+        elif msg['request'] == 'start':
+            await do_action(ws, msg['id'], lambda: start_machine(msg['name']))
+        elif msg['request'] == 'setup-ws':
+            await do_action(ws, msg['id'], lambda: setup_conn(msg['name']))
+
+if __name__ == '__main__':
+    try:
+        print('Connecting to hypervisor...')
+        conn = libvirt.open('qemu:///system')
+
+        print('Querying available machines...')
+        names = conn.listDefinedDomains()
+        if names is None:
+            raise VSException('Failed to obtain domain name list')
+        ids = conn.listDomainsID()
+        if ids is None:
+            raise VSException('Failed to obtain domain ID list')
+        for id in ids:
+            dom = conn.lookupByID(id)
+            names.append(dom.name())
+
+        machines = {}
+        for name in names:
+            dom = conn.lookupByName(name)
+            raw_xml = dom.XMLDesc(0)
+            xml = minidom.parseString(raw_xml)
+            for g in xml.getElementsByTagName('graphics'):
+                if (g.getAttribute('type') == 'vnc' and
+                    g.getAttribute('autoport') == 'no'):
+                    port = int(g.getAttribute('port'))
+                    machines[name] = {
+                        'vnc': port,
+                        'ws': None,
+                        'process': None
+                    }
+                    break
+
+        print('Found machines:')
+        for name, desc in machines.items():
+            print('{} (port {})'.format(name, desc['vnc']))
+    except libvirt.libvirtError as e:
+        print(repr(e), file=sys.stderr)
+        exit(1)
+
+    start_server = websockets.serve(handle, 'localhost', PORT)
+    asyncio.get_event_loop().run_until_complete(start_server)
+    asyncio.get_event_loop().run_forever()

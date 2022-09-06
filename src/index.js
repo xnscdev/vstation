@@ -11,7 +11,7 @@ let socket;
 
 async function connectWs(address, port) {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const url = `${protocol}//${address}:${port}/ws/`;
+    const url = `${protocol}//${address}:${port}/`;
     socket = new WebSocketAsPromised(url, {
         packMessage: data => JSON.stringify(data),
         unpackMessage: data => JSON.parse(data),
