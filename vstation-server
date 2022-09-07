@@ -15,6 +15,12 @@ next_port = 11624
 class VSException(Exception):
     pass
 
+def yn(x):
+    if x:
+        return 'Yes'
+    else:
+        return 'No'
+
 def get_port():
     global next_port
     port = next_port
@@ -56,7 +62,7 @@ def setup_conn(name):
             except OSError:
                 raise VSException('Failed to run websockify')
 
-            timeout = 5
+            timeout = 15
             timeout_start = time.time()
             while time.time() < timeout_start + timeout:
                 line = p.stderr.readline()
@@ -126,17 +132,24 @@ if __name__ == '__main__':
             for g in xml.getElementsByTagName('graphics'):
                 if (g.getAttribute('type') == 'vnc' and
                     g.getAttribute('autoport') == 'no'):
+                    fxf = None
+                    for fs in xml.getElementsByTagName('filesystem'):
+                        source = fs.getElementsByTagName('source')[0]
+                        fxf = source.getAttribute('dir')
+                        break
                     port = int(g.getAttribute('port'))
                     machines[name] = {
                         'vnc': port,
                         'ws': None,
-                        'process': None
+                        'process': None,
+                        'fxf': fxf
                     }
                     break
 
         print('Found machines:')
+        print('%-16s %-5s %-3s' % ('Name', 'Port', 'FXF'))
         for name, desc in machines.items():
-            print('{} (port {})'.format(name, desc['vnc']))
+            print('%-16s %-5d %-3s' % (name, desc['vnc'], yn(desc['fxf'])))
     except libvirt.libvirtError as e:
         print(repr(e), file=sys.stderr)
         exit(1)
