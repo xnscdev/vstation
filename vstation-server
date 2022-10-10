@@ -134,9 +134,11 @@ if __name__ == '__main__':
                     g.getAttribute('autoport') == 'no'):
                     fxf = None
                     for fs in xml.getElementsByTagName('filesystem'):
-                        source = fs.getElementsByTagName('source')[0]
-                        fxf = source.getAttribute('dir')
-                        break
+                        target = fs.getElementsByTagName('target')[0]
+                        if str(target.getAttribute('dir')) == 'vstation_fxf':
+                            source = fs.getElementsByTagName('source')[0]
+                            fxf = source.getAttribute('dir')
+                            break
                     port = int(g.getAttribute('port'))
                     machines[name] = {
                         'vnc': port,
