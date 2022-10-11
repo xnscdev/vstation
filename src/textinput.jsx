@@ -23,7 +23,8 @@ export default class TextInput extends React.Component {
         return (
             <input
                 type={this.props.number ? 'number' : 'text'}
-                className='space-right' value={this.state.value}
+                className='space-right'
+                value={this.state.value}
                 onChange={e => this.handleChange(e)}
                 {...input}
             />

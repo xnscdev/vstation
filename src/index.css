@@ -83,6 +83,6 @@ button:active {
     background-color: blue;
 }
 
-.space-right {
+button, .space-right {
     margin-right: 30px;
 }

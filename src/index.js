@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import WebSocketAsPromised from 'websocket-as-promised';
 import TextInput from './textinput';
+import FileInput from './fileinput';
 import Screen from './screen';
 import './index.css';
 import RFB from "@novnc/novnc/core/rfb";
@@ -161,6 +162,17 @@ class Client extends React.Component {
             .then(this.openVNC);
     }
 
+    uploadFile(files) {
+        if (!files.length || !this.state.vncAddress)
+            return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            console.log(reader.response);
+            socket.sendRequest({request: 'upload', data: reader.response}).then(response => console.log(response));
+        }
+        reader.readAsBinaryString(files[0]);
+    }
+
     render() {
         return (
             <div>
@@ -174,6 +186,7 @@ class Client extends React.Component {
                     Address: <TextInput handler={value => this.handleAddress(value)} />
                     Port: <TextInput number='0,65535' handler={value => this.handlePort(value)} />
                     <button onClick={() => this.connect()}>Connect</button>
+                    File transfer: <FileInput handler={files => this.uploadFile(files)} />
                 </div>
             </div>
         );
