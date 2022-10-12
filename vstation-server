@@ -3,6 +3,7 @@
 import asyncio
 import json
 import libvirt
+import os
 import subprocess
 import sys
 import time
@@ -26,6 +27,15 @@ def get_port():
     port = next_port
     next_port += 1
     return port
+
+def get_size(path):
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            if not os.path.islink(fp):
+                total_size += os.path.getsize(fp)
+    return total_size
 
 def get_machines():
     m = []
@@ -77,14 +87,26 @@ def setup_conn(name):
     except KeyError:
         raise VSException('No machine found with name ' + name)
 
-def do_fxf(machine, contents):
+def do_fxf(machine, contents, filename):
     try:
         fxf_dir = machines[machine]['fxf']
     except KeyError:
         raise VSException('Machine does not support file transfers')
-    print(machine)
-    print(fxf_dir)
-    return {}
+    new_size = get_size(fxf_dir) + len(contents)
+    if new_size >= 0x40000000:
+        raise VSException('File transfer directory exceeds maximum size')
+
+    count = 0
+    suffix = ''
+    while True:
+        try:
+            fname = fxf_dir + '/' + filename + suffix
+            with open(fname, 'xb') as f:
+                f.write(contents)
+            return {'filename': fname}
+        except FileExistsError:
+            suffix = '.' + str(count)
+            count += 1
 
 async def send_failure(ws, id, msg):
     await ws.send(json.dumps({
@@ -118,7 +140,8 @@ async def handle(ws, path):
             await do_action(ws, msg['id'], lambda: setup_conn(msg['name']))
         elif msg['request'] == 'upload':
             await do_action(ws, msg['id'],
-                            lambda: do_fxf(msg['name'], msg['contents']))
+                            lambda: do_fxf(msg['name'], msg['contents'],
+                                           msg['filename']))
 
 if __name__ == '__main__':
     try:

@@ -38,6 +38,7 @@ class Client extends React.Component {
         this.displayMachines = this.displayMachines.bind(this);
         this.openVNC = this.openVNC.bind(this);
         this.checkStart = this.checkStart.bind(this);
+	this.finishUpload = this.finishUpload.bind(this);
     }
 
     handleAddress(value) {
@@ -131,9 +132,8 @@ class Client extends React.Component {
     }
 
     createVNCHandle(address, port) {
-        if (this.state.handle) {
+        if (this.state.handle)
             this.state.handle.disconnect();
-        }
         const url = `ws://${address}:${port}`; // TODO Setup WebSocket proxy to port
         console.log(`VNC URL: ${url}`);
         const handle = new RFB(document.getElementById('screen'), url);
@@ -173,8 +173,18 @@ class Client extends React.Component {
 	    return;
 	}
         const reader = new FileReader();
-        reader.onload = () => socket.sendRequest({request: 'upload', name: this.state.machineSelect.selected, contents: reader.result});
-        reader.readAsBinaryString(file);
+        reader.onload = () => socket.sendRequest({request: 'upload', name: this.state.machineSelect.selected, contents: reader.result, filename: file.name}).then(this.finishUpload);
+	reader.readAsBinaryString(file);
+    }
+
+    finishUpload(response) {
+	return new Promise((resolve, reject) => {
+	    if (response.success) {
+		resolve();
+	    } else {
+		reject();
+	    }
+	});
     }
 
     render() {
