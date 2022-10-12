@@ -32,7 +32,8 @@ class Client extends React.Component {
             vncAddress: null,
             vncPort: null,
             error: null,
-            machineSelect: null
+            machineSelect: null,
+	    fxfEnabled: false
         }
         this.displayMachines = this.displayMachines.bind(this);
         this.openVNC = this.openVNC.bind(this);
@@ -112,7 +113,8 @@ class Client extends React.Component {
                     ...this.state,
                     vncAddress: address,
                     vncPort: port,
-                    handle: this.createVNCHandle(address, port)
+                    handle: this.createVNCHandle(address, port),
+		    fxfEnabled: response.fxf
                 };
                 this.setState(state);
                 resolve();
@@ -147,6 +149,7 @@ class Client extends React.Component {
             handle.sendCredentials({password: password});
         });
         handle.addEventListener('desktopname', e => console.log(e.detail.name));
+	handle.scaleViewport = true;
         return handle;
     }
 
@@ -162,31 +165,34 @@ class Client extends React.Component {
             .then(this.openVNC);
     }
 
-    uploadFile(files) {
-        if (!files.length || !this.state.vncAddress)
+    uploadFile(file) {
+        if (!this.state.vncAddress)
             return;
+	if (file.size > 0x8000000) {
+	    alert("File size cannot exceed 128 MiB.");
+	    return;
+	}
         const reader = new FileReader();
-        reader.onload = () => {
-            console.log(reader.response);
-            socket.sendRequest({request: 'upload', data: reader.response}).then(response => console.log(response));
-        }
-        reader.readAsBinaryString(files[0]);
+        reader.onload = () => socket.sendRequest({request: 'upload', name: this.state.machineSelect.selected, contents: reader.result});
+        reader.readAsBinaryString(file);
     }
 
     render() {
         return (
             <div>
-                <Screen
-                    error={this.state.error}
-                    machines={this.state.machineSelect}
-                    selectCallback={name => this.selectMachine(name)}
-                />
+		<div>
+                    <Screen
+			error={this.state.error}
+			machines={this.state.machineSelect}
+			selectCallback={name => this.selectMachine(name)}
+                    />
+		</div>
                 <div id='bottom'>
                     <h2>Manage Connection</h2>
                     Address: <TextInput handler={value => this.handleAddress(value)} />
                     Port: <TextInput number='0,65535' handler={value => this.handlePort(value)} />
                     <button onClick={() => this.connect()}>Connect</button>
-                    File transfer: <FileInput handler={files => this.uploadFile(files)} />
+                    File transfer: <FileInput handler={files => this.uploadFile(files)} enabled={this.state.fxfEnabled} />
                 </div>
             </div>
         );

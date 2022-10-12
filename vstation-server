@@ -73,9 +73,18 @@ def setup_conn(name):
 
             desc['process'] = p
             desc['ws'] = ws
-        return {'port': desc['ws']}
+        return {'port': desc['ws'], 'fxf': True if desc['fxf'] else False}
     except KeyError:
         raise VSException('No machine found with name ' + name)
+
+def do_fxf(machine, contents):
+    try:
+        fxf_dir = machines[machine]['fxf']
+    except KeyError:
+        raise VSException('Machine does not support file transfers')
+    print(machine)
+    print(fxf_dir)
+    return {}
 
 async def send_failure(ws, id, msg):
     await ws.send(json.dumps({
@@ -107,6 +116,9 @@ async def handle(ws, path):
             await do_action(ws, msg['id'], lambda: start_machine(msg['name']))
         elif msg['request'] == 'setup-ws':
             await do_action(ws, msg['id'], lambda: setup_conn(msg['name']))
+        elif msg['request'] == 'upload':
+            await do_action(ws, msg['id'],
+                            lambda: do_fxf(msg['name'], msg['contents']))
 
 if __name__ == '__main__':
     try:
@@ -135,7 +147,7 @@ if __name__ == '__main__':
                     fxf = None
                     for fs in xml.getElementsByTagName('filesystem'):
                         target = fs.getElementsByTagName('target')[0]
-                        if str(target.getAttribute('dir')) == 'vstation_fxf':
+                        if str(target.getAttribute('dir')) == '/vstation_fxf':
                             source = fs.getElementsByTagName('source')[0]
                             fxf = source.getAttribute('dir')
                             break

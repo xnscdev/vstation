@@ -13,17 +13,22 @@ export default class FileInput extends React.Component {
     }
 
     uploadFile() {
-        this.props.handler(this.state.files);
+	if (this.state.files)
+            this.props.handler(this.state.files[0]);
     }
 
     render() {
+	let input = {};
+	if (!this.props.enabled)
+	    input = {disabled: 'disabled'};
         return (
             <span>
                 <input
                     type='file'
                     onChange={e => this.handleChange(e)}
+		    {...input}
                 />
-                <button className='space-right' onClick={() => this.uploadFile()}>Upload</button>
+                <button onClick={() => this.uploadFile()} {...input}>Upload</button>
             </span>
         );
     }
