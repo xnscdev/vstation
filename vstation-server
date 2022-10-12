@@ -102,8 +102,8 @@ def do_fxf(machine, contents, filename):
         try:
             fname = fxf_dir + '/' + filename + suffix
             with open(fname, 'xb') as f:
-                f.write(contents)
-            return {'filename': fname}
+                f.write(contents.encode())
+            return {'filename': filename + suffix}
         except FileExistsError:
             suffix = '.' + str(count)
             count += 1

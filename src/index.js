@@ -4,8 +4,10 @@ import WebSocketAsPromised from 'websocket-as-promised';
 import TextInput from './textinput';
 import FileInput from './fileinput';
 import Screen from './screen';
-import './index.css';
 import RFB from "@novnc/novnc/core/rfb";
+import {ToastContainer, toast} from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import './index.css';
 
 const port = 5962;
 let socket;
@@ -169,7 +171,7 @@ class Client extends React.Component {
         if (!this.state.vncAddress)
             return;
 	if (file.size > 0x8000000) {
-	    alert("File size cannot exceed 128 MiB.");
+	    toast.error('File exceeds maximum allowed size of 128 MiB');
 	    return;
 	}
         const reader = new FileReader();
@@ -180,8 +182,10 @@ class Client extends React.Component {
     finishUpload(response) {
 	return new Promise((resolve, reject) => {
 	    if (response.success) {
+		toast.success(`File successfully uploaded as ${response.filename} in the FXF drive`);
 		resolve();
 	    } else {
+		toast.error(response.error);
 		reject();
 	    }
 	});
@@ -204,6 +208,18 @@ class Client extends React.Component {
                     <button onClick={() => this.connect()}>Connect</button>
                     File transfer: <FileInput handler={files => this.uploadFile(files)} enabled={this.state.fxfEnabled} />
                 </div>
+		<ToastContainer
+		    position='bottom-right'
+		    autoClose={4000}
+		    hideProgressBar
+		    newestOnTop={false}
+		    closeOnClick
+		    rtl={false}
+		    pauseOnFocusLoss
+		    draggable
+		    pauseOnHover
+		    theme='light'
+		/>
             </div>
         );
     }
