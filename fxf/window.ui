@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Created with Cambalache 0.10.3 -->
+<interface>
+  <!-- interface-name window.ui -->
+  <requires lib="gtk" version="4.6"/>
+  <template class="VSWindow" parent="GtkApplicationWindow">
+    <property name="resizable">False</property>
+    <property name="title">VStation File Transfer</property>
+    <child>
+      <object class="GtkBox">
+        <property name="margin-bottom">15</property>
+        <property name="margin-end">15</property>
+        <property name="margin-start">15</property>
+        <property name="margin-top">15</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">15</property>
+        <child>
+          <object class="GtkLabel" id="fxf_dir_label">
+            <property name="label">File transfer directory: none</property>
+            <property name="xalign">0.0</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="spacing">20</property>
+            <child>
+              <object class="GtkLabel">
+                <property name="label">Upload file to file transfer directory</property>
+                <property name="xalign">0.0</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkButton" id="select_button">
+                <property name="label">Select</property>
+                <property name="sensitive">False</property>
+                <signal name="clicked" handler="select_file"/>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel" id="confirm_label"/>
+        </child>
+      </object>
+    </child>
+  </template>
+</interface>

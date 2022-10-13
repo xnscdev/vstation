@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE cambalache-project SYSTEM "cambalache-project.dtd">
+<cambalache-project version="0.10.3" target_tk="gtk-4.0">
+  <ui>
+	(1,1,"window.ui","window.ui",None,None,None,None,None,None)
+  </ui>
+  <object>
+	(1,1,"GtkApplicationWindow","VSWindow",None,None,None,None,None),
+	(1,2,"GtkBox",None,1,None,None,None,-1),
+	(1,3,"GtkLabel","fxf_dir_label",2,None,None,None,None),
+	(1,4,"GtkBox",None,2,None,None,None,1),
+	(1,5,"GtkLabel",None,4,None,None,None,None),
+	(1,6,"GtkButton","select_button",4,None,None,None,1),
+	(1,7,"GtkLabel","confirm_label",2,None,None,None,2)
+  </object>
+  <object_property>
+	(1,1,"GtkWindow","resizable","False",None,None,None,None,None),
+	(1,1,"GtkWindow","title","VStation File Transfer",None,None,None,None,None),
+	(1,2,"GtkBox","spacing","15",None,None,None,None,None),
+	(1,2,"GtkOrientable","orientation","vertical",None,None,None,None,None),
+	(1,2,"GtkWidget","margin-bottom","15",None,None,None,None,None),
+	(1,2,"GtkWidget","margin-end","15",None,None,None,None,None),
+	(1,2,"GtkWidget","margin-start","15",None,None,None,None,None),
+	(1,2,"GtkWidget","margin-top","15",None,None,None,None,None),
+	(1,3,"GtkLabel","label","File transfer directory: none",None,None,None,None,None),
+	(1,3,"GtkLabel","xalign","0.0",None,None,None,None,None),
+	(1,4,"GtkBox","spacing","20",None,None,None,None,None),
+	(1,5,"GtkLabel","label","Upload file to file transfer directory",None,None,None,None,None),
+	(1,5,"GtkLabel","xalign","0.0",None,None,None,None,None),
+	(1,6,"GtkButton","label","Select",None,None,None,None,None),
+	(1,6,"GtkWidget","sensitive","False",None,None,None,None,None)
+  </object_property>
+  <object_signal>
+	(1,1,6,"GtkButton","clicked","select_file",None,None,None,None,None)
+  </object_signal>
+</cambalache-project>
