@@ -45,10 +45,15 @@ static void
 read_fstab (void)
 {
   GFile *file = g_file_new_for_path ("/etc/fstab");
-  GFileInputStream *fis = g_file_read (file, NULL, NULL);
+  GError *error;
+  GFileInputStream *fis = g_file_read (file, NULL, &error);
   GDataInputStream *stream;
   gchar *line;
-  g_return_if_fail (fis);
+  if (!fis)
+    {
+      g_critical ("%s", error->message);
+      return;
+    }
   stream = g_data_input_stream_new (G_INPUT_STREAM (fis));
   while ((line = g_data_input_stream_read_line (stream, NULL, NULL, NULL)))
     {
@@ -56,7 +61,7 @@ read_fstab (void)
 	{
 	  gchar **items = g_strsplit_set (line, " \t", -1);
 	  int i;
-	  for (i = 0; items[i]; i++)
+	  for (i = 1; items[i]; i++)
 	    {
 	      if (*items[i] == '/')
 		{
@@ -79,13 +84,20 @@ static void
 copy_file (const gchar *path)
 {
   GFile *file = g_file_new_for_path (path);
+  GError *error = NULL;
   GFileInfo *info = g_file_query_info (file, G_FILE_ATTRIBUTE_STANDARD_SIZE,
-				       G_FILE_QUERY_INFO_NONE, NULL, NULL);
+				       G_FILE_QUERY_INFO_NONE, NULL, &error);
   gsize size;
   gsize fxf_size;
   gsize count = 0;
-  gchar *suffix = g_strdup ("");
-  g_return_if_fail (info);
+  gchar *suffix;
+  if (!info)
+    {
+      g_critical ("%s", error->message);
+      return;
+    }
+
+  suffix = g_strdup ("");
   size = g_file_info_get_size (info);
   fxf_size = dir_size (fxf_dir);
   if (size + fxf_size >= 0x40000000)
@@ -97,16 +109,16 @@ copy_file (const gchar *path)
 
   while (TRUE)
     {
-      GError *error = NULL;
       gchar *name =
 	g_strdup_printf ("%s%s", g_file_get_basename (file), suffix);
       GFile *dest = g_file_get_child (fxf_dir, name);
       g_free (name);
+      error = NULL;
       g_file_copy (file, dest, G_FILE_COPY_TARGET_DEFAULT_PERMS, NULL, NULL,
 		   NULL, &error);
       if (error)
 	{
-	  if (error->code == G_FILE_ERROR_EXIST)
+	  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_EXISTS))
 	    {
 	      g_free (suffix);
 	      suffix = g_strdup_printf (".%zu", count++);
@@ -118,7 +130,14 @@ copy_file (const gchar *path)
 	    }
 	}
       else
-	break;
+	{
+	  gchar *file_path = g_file_get_path (file);
+	  gchar *dest_path = g_file_get_path (dest);
+	  g_printf ("%s copied as %s\n", file_path, dest_path);
+	  g_free (file_path);
+	  g_free (dest_path);
+	  break;
+	}
     }
   g_free (suffix);
   g_object_unref (file);
@@ -127,7 +146,17 @@ copy_file (const gchar *path)
 static void
 remove_file (const gchar *path)
 {
-  g_critical ("Not implemented");
+  GFile *file = g_file_resolve_relative_path (fxf_dir, path);
+  GError *error = NULL;
+  if (!g_file_has_prefix (file, fxf_dir))
+    {
+      g_critical ("Attempted to access file outside file transfer directory");
+      g_object_unref (file);
+      return;
+    }
+  if (!g_file_delete (file, NULL, &error))
+    g_critical ("%s", error->message);
+  g_object_unref (file);
 }
 
 static void
