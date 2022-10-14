@@ -109,3 +109,10 @@ button:disabled {
 button, .space-right {
     margin-right: 30px;
 }
+
+.file-list {
+    position: absolute;
+    width: 50%;
+    height: 80%;
+    margin: auto;
+}

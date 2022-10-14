@@ -16,7 +16,7 @@
 
 import React from 'react';
 
-export default class FileInput extends React.Component {
+export class FileInput extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -49,3 +49,10 @@ export default class FileInput extends React.Component {
         );
     }
 }
+
+export const DownloadButton = props => {
+    let input = {};
+    if (!props.enabled)
+	input = {disabled: 'disabled'};
+    return <button onClick={props.handler} {...input}>Download</button>
+};

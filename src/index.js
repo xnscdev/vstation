@@ -18,7 +18,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import WebSocketAsPromised from 'websocket-as-promised';
 import TextInput from './textinput';
-import FileInput from './fileinput';
+import {FileInput, DownloadButton} from './fileinput';
+import FileList from './filelist';
 import Screen from './screen';
 import RFB from "@novnc/novnc/core/rfb";
 import {ToastContainer, toast} from 'react-toastify';
@@ -51,6 +52,7 @@ class Client extends React.Component {
             vncPort: null,
             error: null,
             machineSelect: null,
+	    files: null,
 	    fxfEnabled: false
         }
         this.displayMachines = this.displayMachines.bind(this);
@@ -207,6 +209,12 @@ class Client extends React.Component {
 	});
     }
 
+    download() {
+    }
+
+    selectFile(name) {
+    }
+
     render() {
         return (
             <div>
@@ -223,7 +231,15 @@ class Client extends React.Component {
                     Port: <TextInput number='0,65535' handler={value => this.handlePort(value)} />
                     <button onClick={() => this.connect()}>Connect</button>
                     File transfer: <FileInput handler={files => this.uploadFile(files)} enabled={this.state.fxfEnabled} />
+		    <DownloadButton
+			handler={() => this.download()}
+			enabled={this.state.fxfEnabled}
+		    />
                 </div>
+		<FileList
+		    files={this.state.files}
+		    selectCallback={name => this.selectFile(name)}
+		/>
 		<ToastContainer
 		    position='bottom-right'
 		    autoClose={4000}
