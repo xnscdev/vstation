@@ -20,8 +20,11 @@ const FileList = props => {
     if (!props.files)
 	return null;
     return (
-	<div className='file-list'>
+	<div className='file-list screen-info'>
+	    <h3>Index of {props.path === '.' ? '/' : '/' + props.path}</h3>
+	    <button className='button-link file-list-close' onClick={props.closeCallback}>Close</button>
 	    <ul>
+		<li><button className='button-link button-link-2' onClick={() => props.selectCallback('..')}>Parent directory</button></li>
 		{props.files.map(name => <li key={name}><button className='button-link' onClick={() => props.selectCallback(name)}>{name}</button></li>)}
 	    </ul>
 	</div>

@@ -34,7 +34,7 @@ export default class TextInput extends React.Component {
         let input = {};
         if (number) {
             let arr = number.split(',');
-            input = {min: arr[0], max: arr[1]};
+            input = {min: arr[0], max: arr[1], size: Math.log10(arr[1])};
         }
         return (
             <input

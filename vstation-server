@@ -17,12 +17,15 @@
 # along with VStation. If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
+import base64
 import json
 import libvirt
 import os
+from pathlib import Path
 import subprocess
 import sys
 import time
+import traceback
 import websockets
 from xml.dom import minidom
 
@@ -123,6 +126,31 @@ def do_fxf(machine, contents, filename):
         except FileExistsError:
             suffix = '.' + str(count)
             count += 1
+        except BaseException as e:
+            raise VSException('Failed to write file to remote disk') from e
+
+def fetch(machine, path):
+    try:
+        fxf_dir = machines[machine]['fxf']
+    except KeyError:
+        raise VSException('Machine does not support file transfers')
+    root = Path(fxf_dir)
+    child = root / path
+    child = child.resolve()
+    if root not in child.parents and root != child:
+        raise VSException('Attempted to fetch file outside root directory')
+    try:
+        files = os.listdir(child)
+        new_path = child.relative_to(root)
+        return {'type': 'dir', 'path': str(new_path), 'files': files}
+    except NotADirectoryError:
+        try:
+            with open(child, 'rb') as f:
+                data = f.read()
+            data = base64.b64encode(data).decode()
+            return {'type': 'file', 'name': child.name, 'data': data}
+        except BaseException as e:
+            raise VSException('Failed to read file contents: ' + repr(e))
 
 async def send_failure(ws, id, msg):
     await ws.send(json.dumps({
@@ -141,7 +169,9 @@ async def do_action(ws, id, f):
         obj = f()
         await send_success(ws, id, obj)
     except VSException as e:
-        await send_failure(ws, id, repr(e))
+        await send_failure(ws, id, str(e))
+    except:
+        traceback.print_exc()
 
 async def handle(ws, path):
     while True:
@@ -158,6 +188,9 @@ async def handle(ws, path):
             await do_action(ws, msg['id'],
                             lambda: do_fxf(msg['name'], msg['contents'],
                                            msg['filename']))
+        elif msg['request'] == 'fetch':
+            await do_action(ws, msg['id'],
+                            lambda: fetch(msg['name'], msg['path']))
 
 if __name__ == '__main__':
     try:

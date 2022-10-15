@@ -114,8 +114,7 @@ copy_file (const gchar *path)
       GFile *dest = g_file_get_child (fxf_dir, name);
       g_free (name);
       error = NULL;
-      g_file_copy (file, dest, G_FILE_COPY_TARGET_DEFAULT_PERMS, NULL, NULL,
-		   NULL, &error);
+      g_file_copy (file, dest, G_FILE_COPY_NONE, NULL, NULL, NULL, &error);
       if (error)
 	{
 	  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_EXISTS))

@@ -27,6 +27,10 @@ body {
     color: black;
 }
 
+.button-link-2 {
+    color: slategray;
+}
+
 .button-link:hover {
     background: none;
     color: darkslategray;
@@ -38,7 +42,7 @@ body {
     top: 0;
     left: 0;
     width: 100%;
-    height: 100%;
+    height: 90%;
 }
 
 .screen-middle {
@@ -67,15 +71,17 @@ body {
     top: 0;
     left: 0;
     width: 100%;
-    height: 100%;
+    height: 90%;
 }
 
 #bottom {
     position: absolute;
     bottom: 0;
-    padding: 15px;
+    padding: 0 15px 15px 15px;
     background-color: lightgray;
+    font-size: 14px;
     width: 100%;
+    height: 10%;
 }
 
 input[type='text'], input[type='number'] {
@@ -89,7 +95,7 @@ button {
     background-color: dodgerblue;
     color: white;
     padding: 7px;
-    font-size: 20px;
+    font-size: 16px;
     border: 0;
     border-radius: 3px;
 }
@@ -113,6 +119,26 @@ button, .space-right {
 .file-list {
     position: absolute;
     width: 50%;
-    height: 80%;
+    height: 60%;
+    top: 0;
+    bottom: 10%;
+    left: 0;
+    right: 0;
     margin: auto;
+}
+
+.file-list h3 {
+    display: inline-block;
+    padding-left: 20px;
+}
+
+.file-list-close {
+    display: inline-block;
+    float: right;
+    padding-top: 20px;
+    color: brown;
+}
+
+.file-list-close:hover {
+    color: red;
 }

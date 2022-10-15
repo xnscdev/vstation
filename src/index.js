@@ -52,6 +52,7 @@ class Client extends React.Component {
             vncPort: null,
             error: null,
             machineSelect: null,
+	    path: null,
 	    files: null,
 	    fxfEnabled: false
         }
@@ -59,6 +60,7 @@ class Client extends React.Component {
         this.openVNC = this.openVNC.bind(this);
         this.checkStart = this.checkStart.bind(this);
 	this.finishUpload = this.finishUpload.bind(this);
+	this.fetchFile = this.fetchFile.bind(this);
     }
 
     handleAddress(value) {
@@ -210,9 +212,59 @@ class Client extends React.Component {
     }
 
     download() {
+	if (!this.state.vncAddress)
+	    return;
+	socket.sendRequest({request: 'fetch', name: this.state.machineSelect.selected, path: '.'}).then(this.fetchFile);
+    }
+
+    fetchFile(response) {
+	return new Promise((resolve, reject) => {
+	    if (response.success) {
+		if (response.type === 'dir') {
+		    const state = {
+			...this.state,
+			path: response.path,
+			files: response.files
+		    };
+		    this.setState(state);
+		} else {
+		    const element = document.createElement('a');
+		    const bytes = atob(response.data);
+		    const arrays = [];
+		    for (let offset = 0; offset < bytes.length; offset += 512) {
+			const slice = bytes.slice(offset, offset + 512);
+			const values = new Array(slice.length);
+			for (let i = 0; i < slice.length; i++) {
+			    values[i] = slice.charCodeAt(i);
+			}
+			const array = new Uint8Array(values);
+			arrays.push(array);
+		    }
+		    const file = new Blob(arrays, {type: 'application/octet-stream'});
+		    element.href = URL.createObjectURL(file);
+		    element.download = response.name;
+		    document.body.appendChild(element);
+		    element.click();
+		}
+		resolve();
+	    } else {
+		toast.error(response.error);
+		reject();
+	    }
+	});
     }
 
     selectFile(name) {
+	socket.sendRequest({request: 'fetch', name: this.state.machineSelect.selected, path: this.state.path + '/' + name}).then(this.fetchFile);
+    }
+
+    closeFiles() {
+	const state = {
+	    ...this.state,
+	    path: null,
+	    files: null
+	};
+	this.setState(state);
     }
 
     render() {
@@ -226,7 +278,7 @@ class Client extends React.Component {
                     />
 		</div>
                 <div id='bottom'>
-                    <h2>Manage Connection</h2>
+                    <h3>Manage Connection</h3>
                     Address: <TextInput handler={value => this.handleAddress(value)} />
                     Port: <TextInput number='0,65535' handler={value => this.handlePort(value)} />
                     <button onClick={() => this.connect()}>Connect</button>
@@ -237,8 +289,10 @@ class Client extends React.Component {
 		    />
                 </div>
 		<FileList
+		    path={this.state.path}
 		    files={this.state.files}
 		    selectCallback={name => this.selectFile(name)}
+		    closeCallback={() => this.closeFiles()}
 		/>
 		<ToastContainer
 		    position='bottom-right'
