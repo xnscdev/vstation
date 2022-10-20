@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# main.c -- This file is part of VStation.
+# vstation-server -- This file is part of VStation.
 # Copyright (C) 2022 XNSC
 #
 # VStation is free software: you can redistribute it and/or modify
